@@ -156,8 +156,3 @@ export async function runScraper() {
   }
 }
 
-// 3. Register with Deno.cron instead of executing immediately at top-level
-// Adjust the schedule (cron syntax) to when you want it to run
-Deno.cron("Run BMW Scraper", "0 6 * * *", async () => {
-  await runScraper();
-});
