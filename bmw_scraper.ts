@@ -4,7 +4,7 @@ import { TuttiClient } from "tutti-api";
 // Instantiate a dummy client once to grab the underlying SearchQuery prototype
 const dummyQuery = new TuttiClient().search("");
 const SearchQueryProto = Object.getPrototypeOf(dummyQuery);
-
+const ARCHIVE_WEBHOOK_URL = Deno.env.get("ARCHIVE_WEBHOOK_URL")!;
 // Override select
 SearchQueryProto.select = function (name: string, value: string) {
   this._strings.push({ key: name, value: value });

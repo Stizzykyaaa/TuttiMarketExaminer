@@ -1,4 +1,5 @@
 // analyzer.ts
+const ALERTS_WEBHOOK_URL = Deno.env.get("ALERTS_WEBHOOK_URL")!;
 export interface ListingRecord {
   listingID: string;
   title: string;

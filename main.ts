@@ -1,18 +1,12 @@
+// main.ts
 import { runScraper } from "./bmw_scraper.ts";
 import { cleanAndDetectDisappearedListings } from "./analyzer.ts";
 
-Deno.cron("BMW Tutti Scraper", "0 9 * * *", async () => {
-  console.log("Running scheduled BMW scrape...");
+Deno.cron("BMW Tutti Daily Pipeline", "0 7 * * *", async () => {
+  console.log("Starting scheduled scrape...");
   await runScraper();
 
-  console.log("Running GC and analyzing listings...");
-  const droppedListings = await cleanAndDetectDisappearedListings();
-
-  // Save to JSON for HTML rendering or processing:
-  if (droppedListings.length > 0) {
-    await Deno.writeTextFile(
-      `./disappeared_${new Date().toISOString().split("T")[0]}.json`,
-      JSON.stringify(droppedListings, null, 2)
-    );
-  }
+  console.log("Analyzing diffs and firing alerts...");
+  await cleanAndDetectDisappearedListings();
+  console.log("Pipeline run complete.");
 });
