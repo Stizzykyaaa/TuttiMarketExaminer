@@ -12,7 +12,6 @@
     "update": "deno run -A -r jsr:@fresh/update .",
     "test:discord": "deno run --allow-net --allow-env tests/test_discord.ts",
     "test:diff": "deno run --allow-net --allow-env --unstable-kv tests/simulate_diff.ts"
-}
   },
   "lint": {
     "rules": {
