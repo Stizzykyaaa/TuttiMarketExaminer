@@ -1,5 +1,6 @@
 {
   "nodeModulesDir": "auto",
+  "unstable": ["kv"],
   "tasks": {
     "check": "deno fmt --check . && deno lint . && deno check",
     "dev": "deno run -A --watch=static/,routes/ dev.ts",
@@ -21,14 +22,16 @@
   "imports": {
     "fresh": "jsr:@fresh/core@^2.0.0-alpha.60",
     "preact": "npm:preact@^10.27.1",
-    "@preact/signals": "npm:@preact/signals@^2.3.1"
+    "@preact/signals": "npm:@preact/signals@^2.3.1",
+    "tutti-api": "npm:tutti-api@^2.1.1"
   },
   "compilerOptions": {
     "lib": [
       "dom",
       "dom.asynciterable",
       "dom.iterable",
-      "deno.ns"
+      "deno.ns",
+      "deno.unstable"
     ],
     "jsx": "precompile",
     "jsxImportSource": "preact",
