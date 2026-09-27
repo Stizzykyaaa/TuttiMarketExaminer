@@ -1,12 +1,18 @@
 {
   "nodeModulesDir": "auto",
-  "unstable": ["kv"],
+  "unstable": ["kv", "cron"],
   "tasks": {
+    "scrape": "deno run --allow-net --allow-read --allow-write bmw_scraper.ts",
+    "analyze": "deno run --allow-net --allow-read --allow-write analyzer.ts",
+    "cron": "deno run --allow-net --allow-read --allow-write main.ts",
     "check": "deno fmt --check . && deno lint . && deno check",
     "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
     "start": "deno serve -A _fresh/server.js",
-    "update": "deno run -A -r jsr:@fresh/update ."
+    "update": "deno run -A -r jsr:@fresh/update .",
+    "test:discord": "deno run --allow-net --allow-env tests/test_discord.ts",
+    "test:diff": "deno run --allow-net --allow-env --unstable-kv tests/simulate_diff.ts"
+}
   },
   "lint": {
     "rules": {

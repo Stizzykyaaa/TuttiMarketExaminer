@@ -1,5 +1,5 @@
 import { App, staticFiles } from "fresh";
-import { define, type State } from "./utils.ts";
+import { define, type State } from "../utils.ts";
 import { TuttiClient } from "tutti-api";
 
 export const app = new App<State>();
