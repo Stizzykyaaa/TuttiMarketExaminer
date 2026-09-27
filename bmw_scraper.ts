@@ -1,22 +1,31 @@
 // bmw_scraper.ts
 import { TuttiClient } from "tutti-api";
-// --- MONKEY-PATCH TUTTI-API BUG FIXES ---
-// Instantiate a dummy client once to grab the underlying SearchQuery prototype
-const dummyQuery = new TuttiClient().search("");
-const SearchQueryProto = Object.getPrototypeOf(dummyQuery);
-const ARCHIVE_WEBHOOK_URL = Deno.env.get("ARCHIVE_WEBHOOK_URL")!;
-// Override select
-SearchQueryProto.select = function (name: string, value: string) {
-  this._strings.push({ key: name, value: value });
-  return this;
-};
 
-// Override multiSelect
-SearchQueryProto.multiSelect = function (name: string, values: string[]) {
-  this._strings.push({ key: name, value: values });
-  return this;
-};
-// ----------------------------------------
+// 1. Concrete interface for KV cache metadata (fixes line 110 lint issue)
+interface ListingMeta {
+  archivedImageUrl?: string | null;
+}
+
+// 2. Wrap prototype patching inside a helper so it runs safely on demand
+let patched = false;
+function applyTuttiPatches() {
+  if (patched) return;
+  const dummyQuery = new TuttiClient().search("");
+  const SearchQueryProto = Object.getPrototypeOf(dummyQuery);
+
+  SearchQueryProto.select = function (name: string, value: string) {
+    this._strings.push({ key: name, value: value });
+    return this;
+  };
+
+  SearchQueryProto.multiSelect = function (name: string, values: string[]) {
+    this._strings.push({ key: name, value: values });
+    return this;
+  };
+
+  patched = true;
+}
+
 function parsePrice(formatted: string | null | undefined): number {
   if (!formatted) return 0;
   const digitsOnly = formatted.replace(/[^\d]/g, "");
@@ -32,6 +41,12 @@ async function uploadImageToDiscordArchive(
   imageUrl: string,
   listingId: string
 ): Promise<string | null> {
+  const archiveWebhookUrl = Deno.env.get("ARCHIVE_WEBHOOK_URL");
+  if (!archiveWebhookUrl) {
+    console.warn("ARCHIVE_WEBHOOK_URL is not set.");
+    return null;
+  }
+
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) return null;
@@ -46,8 +61,7 @@ async function uploadImageToDiscordArchive(
       })
     );
 
-    // ?wait=true tells Discord to respond with the uploaded message & attachment data
-    const discordRes = await fetch(`${ARCHIVE_WEBHOOK_URL}?wait=true`, {
+    const discordRes = await fetch(`${archiveWebhookUrl}?wait=true`, {
       method: "POST",
       body: form,
     });
@@ -66,6 +80,7 @@ async function uploadImageToDiscordArchive(
 }
 
 export async function runScraper() {
+  applyTuttiPatches();
   const client = new TuttiClient();
   const kv = await Deno.openKv();
 
@@ -105,21 +120,18 @@ export async function runScraper() {
         fullImages = listing.images ?? [];
       }
 
-      // Check if we already archived a photo for this listing ID in a previous scrape
+      // Explicit type parameter solves the linter warning
       let archivedImageUrl: string | null = null;
-      const existing = await kv.get<any>(["listing_meta", id]);
+      const existing = await kv.get<ListingMeta>(["listing_meta", id]);
 
       if (existing.value?.archivedImageUrl) {
         archivedImageUrl = existing.value.archivedImageUrl;
       } else {
-        // Upload the primary image to Discord archive
         const primaryImgUrl = fullImages[0]?.rendition?.src;
         if (primaryImgUrl) {
           archivedImageUrl = await uploadImageToDiscordArchive(primaryImgUrl, id);
-          // Small pause to prevent Discord rate-limiting on bulk scrapes
           await new Promise((r) => setTimeout(r, 600));
         }
-        // Cache metadata so we never re-upload the same listing twice
         await kv.set(["listing_meta", id], { archivedImageUrl });
       }
 
@@ -129,12 +141,11 @@ export async function runScraper() {
         body: body,
         formattedPrice: listing.formattedPrice,
         price: parsePrice(listing.formattedPrice),
-        archivedImageUrl: archivedImageUrl, // Permanent Discord-hosted URL
+        archivedImageUrl: archivedImageUrl,
         timestamp: listing.timestamp,
         savedAt: new Date().toISOString(),
       };
 
-      // Save under today's scrape snapshot
       await kv.set(["scrapes", todayKey, id], listingRecord);
       totalProcessed++;
     }
@@ -145,6 +156,8 @@ export async function runScraper() {
   }
 }
 
-if (import.meta.main) {
+// 3. Register with Deno.cron instead of executing immediately at top-level
+// Adjust the schedule (cron syntax) to when you want it to run
+Deno.cron("Run BMW Scraper", "0 6 * * *", async () => {
   await runScraper();
-}
+});

@@ -1,7 +1,4 @@
-import { App, staticFiles } from "fresh";
 import { TuttiClient } from "tutti-api";
-
-export const app = new App<State>();
 
 app.use(staticFiles());
 const client = new TuttiClient();
