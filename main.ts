@@ -1,4 +1,3 @@
-
 // Run with: deno run --allow-net --allow-read --allow-write --unstable-kv main.ts
 
 import { TuttiClient } from "tutti-api";
@@ -28,28 +27,31 @@ async function downloadImage(url: string, destPath: string): Promise<boolean> {
   }
 }
 
-// 2. Run the search query
-console.log("Searching listings...");
-const result = await client
+// 2. Set up the query
+const query = client
   .search("BMW")
   .category("cars")
   .select("carsAutoScoutBrand", "bmw")
-  .interval("carsAutoScoutRegYear", { min: 2004, max: 2007 })
+  .multiSelect("carsAutoScoutType", ["coupe", "saloon", "estate"])
+  .interval("carsAutoScoutRegYear", { min: 1990, max: 2013 })
   .interval("carsAutoScoutMileage", { max: 200000 })
+  .interval("carsAutoScoutHorsepower", { min: 150 })
   .multiSelect("carsAutoScoutTransmissionType", ["manual"])
   .price({ max: 5000 })
-  .multiSelect("language", ["de"])
-  .sort("timestamp", "desc")
-  .fetch();
+  .sort("timestamp", "desc");
 
-console.log(`Found ${result.listings.length} listings to process.`);
+console.log("Starting paginated search across all pages...");
 
-// 3. Process each listing
-for (const listing of result.listings) {
+let totalProcessed = 0;
+
+// Execute initial search result, which holds the paginate() generator
+const initialResult = await query.fetch();
+
+// 3. Iterate through every listing across all pages automatically
+for await (const listing of initialResult.paginate()) {
   const id = listing.listingID;
   console.log(`Processing listing ${id}: ${listing.title}`);
 
-  // Fetch full details to get `body` and full-res image list
   let body = "";
   let fullImages: { rendition?: { src: string } }[] = [];
 
@@ -68,7 +70,6 @@ for (const listing of result.listings) {
 
   const savedImagePaths: string[] = [];
 
-  // Download all available image renditions
   for (let i = 0; i < fullImages.length; i++) {
     const imgUrl = fullImages[i]?.rendition?.src;
     if (!imgUrl) continue;
@@ -80,7 +81,6 @@ for (const listing of result.listings) {
     }
   }
 
-  // Build the record
   const listingRecord = {
     listingID: id,
     title: listing.title,
@@ -92,9 +92,9 @@ for (const listing of result.listings) {
     savedAt: new Date().toISOString(),
   };
 
-  // Save record to Deno KV
   await kv.set(["listings", id], listingRecord);
   console.log(`Saved ${id} with ${savedImagePaths.length} images to KV.\n`);
+  totalProcessed++;
 }
 
-console.log("Done.");
+console.log(`Done. Processed ${totalProcessed} total listings.`);

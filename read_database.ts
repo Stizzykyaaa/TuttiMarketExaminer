@@ -1,4 +1,4 @@
-const kv = await Deno.openKv("./tutti-market.db");
+const kv = await Deno.openKv("tutti-market");
 
 // Retrieve every entry under the ["listings"] namespace
 const entries = kv.list({ prefix: ["listings"] });
