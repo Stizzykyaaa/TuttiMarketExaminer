@@ -96,7 +96,7 @@ export async function runScraper() {
       .interval("carsAutoScoutMileage", { max: 200000 })
       .interval("carsAutoScoutHorsepower", { min: 150 })
       .multiSelect("carsAutoScoutTransmissionType", ["manual"])
-      .price({ max: 5000 })
+      .price({ max: 10000 })
       .sort("timestamp", "desc");
 
     console.log("Starting paginated search across all pages...");
